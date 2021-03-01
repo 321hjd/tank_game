@@ -1,9 +1,10 @@
 /**
  * @author hjd
- * 功能：坦克游戏2.0版本
+ * 功能：坦克游戏3.0版本
  * 1.画出坦克
  * 2.我的坦克可以上下左右移动
  * 3.画出三辆敌人的坦克（注意颜色）
+ * 4.我的坦克可以发射子弹
  */
 package com.tank;
 
@@ -25,6 +26,10 @@ public class MyTankGame_1 extends JFrame {
 		//创建组件
 		mp = new MyPanel();
 		
+		//启动mp线程
+		Thread t = new Thread(mp);
+		t.start();
+		
 		//添加组件
 		this.add(mp);
 		
@@ -42,7 +47,7 @@ public class MyTankGame_1 extends JFrame {
 }
 
 //我的面板
-class MyPanel extends JPanel implements KeyListener {
+class MyPanel extends JPanel implements KeyListener, Runnable {
 	//定义一个我的坦克
 	Hero hero = null;
 	//定义敌人的坦克组（因为不同坦克的运动、子弹均不同，因此是多线程的，需要使用线程安全的Vector
@@ -78,6 +83,10 @@ class MyPanel extends JPanel implements KeyListener {
 		//画出敌人的坦克
 		for(int i = 0;i < ets.size();i++) {
 			this.drawTank(ets.get(i).getX(), ets.get(i).getY(), g, ets.get(i).getDirect(), 1);
+		}
+		//画出子弹
+		if(hero.s != null && hero.s.isLive == true) {
+			g.draw3DRect(hero.s.x, hero.s.y, 1, 1, false);
 		}
 	}
 	
@@ -178,6 +187,11 @@ class MyPanel extends JPanel implements KeyListener {
 			break;
 		}
 		
+		//判断玩家是否按下“j”键——射击
+		if(arg0.getKeyCode() == KeyEvent.VK_J) {
+			this.hero.shotEnemy();
+		}
+		
 		//必须重绘Panel
 		this.repaint();
 	}
@@ -192,6 +206,21 @@ class MyPanel extends JPanel implements KeyListener {
 	public void keyTyped(KeyEvent arg0) {
 		// TODO 自动生成的方法存根
 		
+	}
+
+	//另一个线程
+	public void run() {
+		//每隔100毫秒去重绘
+		while(true) {
+			try {
+				Thread.sleep(100);
+			} catch (InterruptedException e) {
+				// TODO 自动生成的 catch 块
+				e.printStackTrace();
+			}
+			//重绘
+			this.repaint();
+		}
 	}
 }
 
