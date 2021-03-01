@@ -1,5 +1,10 @@
 /**
- * 事件处理机制
+ * 事件处理机制（委派事件模型）
+ * 1.一个类要实现监听的步骤
+ * a.实现相应的接口【KeyListener，Mouse Listener，ActionListener，WindowListener】
+ * b.把接口的处理方法根据需要重写（Override）
+ * c.在<事件源>处注册监听
+ * d.事件传递依靠事件对象（ActionEvent）
  */
 package com.study;
 
@@ -65,6 +70,7 @@ public class Demo2 extends JFrame implements ActionListener {
 	}
 }
 
+//任何一个类，只要实现了响应的接口，就可以监听某个事件源
 class Cat implements ActionListener {
 
 	public void actionPerformed(ActionEvent e) {
