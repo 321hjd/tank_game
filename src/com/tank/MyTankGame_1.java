@@ -1,15 +1,17 @@
 /**
- * 功能：坦克游戏1.0版本
+ * @author hjd
+ * 功能：坦克游戏2.0版本
  * 1.画出坦克
+ * 2.我的坦克可以上下左右移动
+ * 3.画出三辆敌人的坦克（注意颜色）
  */
 package com.tank;
 
 import java.awt.*;
 import javax.swing.*;
-/**
- * @author 18482
- *
- */
+import java.awt.event.*;
+import java.util.Vector;
+
 public class MyTankGame_1 extends JFrame {
 	MyPanel mp = null;
 	
@@ -20,25 +22,49 @@ public class MyTankGame_1 extends JFrame {
 	
 	//构造函数
 	public MyTankGame_1() {
+		//创建组件
 		mp = new MyPanel();
 		
+		//添加组件
 		this.add(mp);
+		
+		//注册监听
+		this.addKeyListener(mp);
+		
+		//设置窗口属性
 		this.setSize(400, 300);
 		this.setTitle("坦克大战");
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		
+		//显示
 		this.setVisible(true);
 	}
 }
 
 //我的面板
-class MyPanel extends JPanel {
+class MyPanel extends JPanel implements KeyListener {
 	//定义一个我的坦克
 	Hero hero = null;
+	//定义敌人的坦克组（因为不同坦克的运动、子弹均不同，因此是多线程的，需要使用线程安全的Vector
+	Vector<EnemyTank> ets = new Vector<EnemyTank>();
+	
+	//敌人数量
+	int enSize = 3;		
 	
 	//构造函数
 	public MyPanel() {
 		//坦克的初始位置
 		hero = new Hero(10, 10);	
+		//初始化敌人的坦克
+		for(int i = 0;i < enSize;i++) {
+			//创建一个敌人对象
+			EnemyTank et = new EnemyTank((i+1)*50, 0);
+			//设置颜色
+			et.setColor(0);
+			et.setDirect(2);
+			//将敌人对象加入敌人坦克组
+			ets.add(et);
+		}
 	}
 	
 	//重写paint函数
@@ -47,8 +73,12 @@ class MyPanel extends JPanel {
 		super.paint(g);
 		//设置坦克活动区域
 		g.fillRect(0, 0, 400, 300);	
-		//画坦克
-		this.drawTank(hero.getX(), hero.getY(), g, 0, 0);
+		//画我的坦克
+		this.drawTank(hero.getX(), hero.getY(), g, this.hero.direct, 0);
+		//画出敌人的坦克
+		for(int i = 0;i < ets.size();i++) {
+			this.drawTank(ets.get(i).getX(), ets.get(i).getY(), g, ets.get(i).getDirect(), 1);
+		}
 	}
 	
 	//画出坦克的函数
@@ -67,7 +97,6 @@ class MyPanel extends JPanel {
 		//向上
 		case 0:					
 			//画出我的坦克
-			//设置颜色	
 			//1.画出左边的矩形
 			g.fill3DRect(x, y, 5, 30, false);
 			//2.画出右边的矩形
@@ -78,48 +107,94 @@ class MyPanel extends JPanel {
 			g.fillOval(x+5, y+10, 10, 10);
 			//5.画出线
 			g.drawLine(x+10, y+15, x+10, y);
+			break;
+		case 1:
+			//炮筒向右（此处较为粗糙，仍以左上角为参照点）
+			//1.画出左边的矩形
+			g.fill3DRect(x, y, 30, 5, false);
+			//2.画出右边的矩形
+			g.fill3DRect(x, y+15, 30, 5, false);
+			//3.画出中间的矩形
+			g.fill3DRect(x+5, y+5, 20, 10, false);
+			//4.画出圆形
+			g.fillOval(x+10, y+5, 10, 10);
+			//5.画出线
+			g.drawLine(x+15, y+10, x+30, y+10);
+			break;
+		case 2:
+			//炮筒向下（此处较为粗糙，仍以左上角为参照点）
+			//1.画出左边的矩形
+			g.fill3DRect(x, y, 5, 30, false);
+			//2.画出右边的矩形
+			g.fill3DRect(x+15, y, 5, 30, false);
+			//3.画出中间的矩形
+			g.fill3DRect(x+5, y+5, 10, 20, false);
+			//4.画出圆形
+			g.fillOval(x+5, y+10, 10, 10);
+			//5.画出线
+			g.drawLine(x+10, y+15, x+10, y+30);
+			break;
+		case 3:
+			//炮筒向左（此处较为粗糙，仍以左上角为参照点）
+			//1.画出左边的矩形
+			g.fill3DRect(x, y, 30, 5, false);
+			//2.画出右边的矩形
+			g.fill3DRect(x, y+15, 30, 5, false);
+			//3.画出中间的矩形
+			g.fill3DRect(x+5, y+5, 20, 10, false);
+			//4.画出圆形
+			g.fillOval(x+10, y+5, 10, 10);
+			//5.画出线
+			g.drawLine(x+15, y+10, x, y+10);
+			break;
 		}	
 	}
+
+	//1.按键按下——a：左 s：下 w：上 d：右
+	public void keyPressed(KeyEvent arg0) {
+		//操控坦克移动
+		switch(arg0.getKeyCode()) {
+		case KeyEvent.VK_W:
+			//设置我的坦克的方向：上
+			this.hero.setDirect(0);
+			this.hero.moveUp();
+			break;
+		case KeyEvent.VK_A:
+			//左
+			this.hero.setDirect(3);
+			this.hero.moveLeft();
+			break;
+		case KeyEvent.VK_S:
+			//下
+			this.hero.setDirect(2);
+			this.hero.moveDown();
+			break;
+		case KeyEvent.VK_D:
+			//右
+			this.hero.setDirect(1);
+			this.hero.moveRight();
+			break;
+		default:
+			break;
+		}
+		
+		//必须重绘Panel
+		this.repaint();
+	}
+
+	//2.按键松开
+	public void keyReleased(KeyEvent arg0) {
+		// TODO 自动生成的方法存根
+		
+	}
+
+	//3.按键输出字符
+	public void keyTyped(KeyEvent arg0) {
+		// TODO 自动生成的方法存根
+		
+	}
 }
 
-//坦克类
-class Tank{
-	//坦克横坐标
-	int x = 0;
-	//坦克纵坐标
-	int y = 0;
-	
-	//构造函数
-	public Tank(int x, int y) {
-		this.x = x;
-		this.y = y;	
-	}
-	
-	//get和set方法
-	public int getX() {
-		return x;
-	}
-
-	public void setX(int x) {
-		this.x = x;
-	}
-
-	public int getY() {
-		return y;
-	}
-
-	public void setY(int y) {
-		this.y = y;
-	}
-}
-
-//我的坦克
-class Hero extends Tank {
-	public Hero(int x, int y) {
-		//调用函数初始化（不可缺少）
-		super(x,y);
-	}
-}
 
 
 
