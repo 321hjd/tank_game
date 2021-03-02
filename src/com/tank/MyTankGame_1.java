@@ -1,10 +1,15 @@
 /**
  * @author hjd
- * 功能：坦克游戏3.0版本
+ * 功能：坦克游戏4.0版本
  * 1.画出坦克
  * 2.我的坦克可以上下左右移动
  * 3.画出三辆敌人的坦克（注意颜色）
  * 4.我的坦克可以发射子弹
+ * 5.子弹可以连发（最多5颗）
+ * 6.我方坦克击中敌方坦克，敌方坦克消失(爆炸效果)
+ * 7.敌人坦克可发子弹
+ * 8.敌方坦克也可自由随机的上下左右移动
+ * 9.控制我方和敌方坦克在固定范围内活动
  */
 package com.tank;
 
@@ -53,8 +58,17 @@ class MyPanel extends JPanel implements KeyListener, Runnable {
 	//定义敌人的坦克组（因为不同坦克的运动、子弹均不同，因此是多线程的，需要使用线程安全的Vector
 	Vector<EnemyTank> ets = new Vector<EnemyTank>();
 	
+	//定义炸弹集合
+	Vector<Bomb> bombs = new Vector<Bomb>();
+	
 	//敌人数量
 	int enSize = 3;		
+	
+	//定义三张图片，三张图片组成动态爆炸效果
+	Image img1 = null;
+	Image img2 = null;
+	Image img3 = null;
+	
 	
 	//构造函数
 	public MyPanel() {
@@ -67,9 +81,22 @@ class MyPanel extends JPanel implements KeyListener, Runnable {
 			//设置颜色
 			et.setColor(0);
 			et.setDirect(2);
+			//启动敌人的坦克
+			Thread t = new Thread(et);
+			t.start();
+			//给敌人的坦克添加子弹
+			Shot s = new Shot(et.x+10, et.y+30, et.direct);
+			//将子弹加给敌人坦克
+			et.ss.add(s);
+			Thread t2 = new Thread(s);
+			t2.start();
 			//将敌人对象加入敌人坦克组
 			ets.add(et);
 		}
+		//初始化图片
+		img1 = Toolkit.getDefaultToolkit().getImage("images/bomb_1.jpg");
+		img2 = Toolkit.getDefaultToolkit().getImage("images/bomb_2.jpg");
+		img3 = Toolkit.getDefaultToolkit().getImage("images/bomb_3.jpg");
 	}
 	
 	//重写paint函数
@@ -78,15 +105,97 @@ class MyPanel extends JPanel implements KeyListener, Runnable {
 		super.paint(g);
 		//设置坦克活动区域
 		g.fillRect(0, 0, 400, 300);	
+		
 		//画我的坦克
 		this.drawTank(hero.getX(), hero.getY(), g, this.hero.direct, 0);
+		
+		//画出炸弹
+		for(int i = 0;i < bombs.size();i++) {
+			//取出炸弹
+			Bomb b = bombs.get(i);
+			
+			if(b.life > 6) {
+				g.drawImage(img1, b.x, b.y, 30, 30, this);
+			}else if(b.life > 3) {
+				g.drawImage(img2, b.x, b.y, 30, 30, this);
+			}else {
+				g.drawImage(img3, b.x, b.y, 30, 30, this);
+			}
+			
+			//让炸弹的生命值减小
+			b.lifeDown();
+			//如果炸弹生命值为0，把该炸弹从bombs向量去掉
+			if(b.life == 0) {
+				bombs.remove(b);
+			}
+		}
+		
 		//画出敌人的坦克
 		for(int i = 0;i < ets.size();i++) {
-			this.drawTank(ets.get(i).getX(), ets.get(i).getY(), g, ets.get(i).getDirect(), 1);
+			EnemyTank et = ets.get(i);
+			if(et.isLive) {
+				this.drawTank(et.getX(), et.getY(), g, et.getDirect(), 1);
+				//画出敌人的子弹
+				for(int j = 0;j < et.ss.size();j++) {
+					//取出一颗子弹
+					Shot enemyShot = et.ss.get(j);
+					//画出一颗子弹
+					if(enemyShot.isLive) {
+						g.draw3DRect(enemyShot.x, enemyShot.y, 1, 1, false);
+					}else {
+						//如果敌人坦克死亡就从Vector去掉
+						et.ss.remove(enemyShot);
+					}
+				}
+			}
 		}
-		//画出子弹
-		if(hero.s != null && hero.s.isLive == true) {
-			g.draw3DRect(hero.s.x, hero.s.y, 1, 1, false);
+		//从ss中取出每个子弹并画出
+		for(int i = 0;i < this.hero.ss.size();i++) {
+			//取出一颗子弹
+			Shot myShot = hero.ss.get(i);
+			//画出一颗子弹
+			if(myShot != null && myShot.isLive == true) {
+				g.draw3DRect(myShot.x, myShot.y, 1, 1, false);
+			}
+			//删除失效子弹
+			if(myShot.isLive == false) {
+				//从ss中删除该子弹
+				hero.ss.remove(myShot);
+			}
+		}
+	}
+	
+	//判断子弹是否集中敌方坦克
+	public void hitTank(Shot s, EnemyTank et) {
+		//判断该坦克的方向
+		switch(et.direct) {
+		//若敌人坦克方向是上或下
+		case 0:
+		case 2:
+			if(s.x > et.x && s.x < et.x+20 && 
+					s.y > et.y && s.y < et.y+30) {
+				//击中
+				//子弹死亡
+				s.isLive = false;
+				//敌人坦克死亡
+				et.isLive = false;
+				//创建一颗炸弹，放入Vector
+				Bomb b = new Bomb(et.x, et.y);
+				bombs.add(b);
+			}
+		case 1:
+		case 3:
+			if(s.x > et.x && s.x < et.x+30 &&
+					s.y > et.y && s.y < et.y+20) {
+				//击中
+				//子弹死亡
+				s.isLive = false;
+				//敌人坦克死亡
+				et.isLive = false;
+				//创建一颗炸弹，放入Vector
+				Bomb b = new Bomb(et.x, et.y);
+				bombs.add(b);
+			}
 		}
 	}
 	
@@ -189,7 +298,10 @@ class MyPanel extends JPanel implements KeyListener, Runnable {
 		
 		//判断玩家是否按下“j”键——射击
 		if(arg0.getKeyCode() == KeyEvent.VK_J) {
-			this.hero.shotEnemy();
+			//限制子弹连发数
+			if(this.hero.ss.size() < 5) {
+				this.hero.shotEnemy();
+			}
 		}
 		
 		//必须重绘Panel
@@ -218,6 +330,24 @@ class MyPanel extends JPanel implements KeyListener, Runnable {
 				// TODO 自动生成的 catch 块
 				e.printStackTrace();
 			}
+			
+			//判断是否击中
+			for(int i = 0;i < hero.ss.size();i++) {
+				//取出子弹
+				Shot myShot = hero.ss.get(i);
+				//判断子弹是否有效
+				if(myShot.isLive) {
+					//取出每个敌人坦克与之判断
+					for(int j = 0;j < ets.size();j++) {
+						//取出坦克
+						EnemyTank et = ets.get(j);
+						if(et.isLive){
+							this.hitTank(myShot, et);
+						}
+					}
+				}
+			}
+			
 			//重绘
 			this.repaint();
 		}
